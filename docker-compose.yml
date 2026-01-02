@@ -1,0 +1,10 @@
+services:
+  server:
+    build: .
+    container_name: birthdays
+    environment:
+      BACKEND_PORT: ${BACKEND_PORT}
+      RUST_LOG: debug
+    ports:
+      - "127.0.0.1:${BACKEND_PORT}:${BACKEND_PORT}"
+    restart: unless-stopped
