@@ -2,7 +2,7 @@
 # https://leapcell.io/blog/building-minimal-and-efficient-rust-web-app-docker-images
 
 # Stage 1
-FROM rust:1.92-slim-bookworm as BUILDER
+FROM rust:1.92-slim-bookworm AS builder
 
 WORKDIR /app
 
@@ -12,11 +12,10 @@ RUN rustup target add x86_64-unknown-linux-musl && \
     update-ca-certificates
 
 COPY Cargo.toml Cargo.lock ./
+COPY src ./src
 
 # cached layer if no changes are made to build dependencies.
 RUN cargo fetch --locked --target x86_64-unknown-linux-musl
-
-COPY src ./src
 
 # Build the release binary with musl target
 # --release for optimizations and smaller size
@@ -29,7 +28,7 @@ RUN CARGO_INCREMENTAL=0 \
 # Stage 2
 FROM scratch
 
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/my_app /app/birthdays
+COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/birthdays /app/birthdays
 USER 1001
 
 EXPOSE ${BACKEND_PORT}
