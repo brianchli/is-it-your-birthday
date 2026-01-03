@@ -32,7 +32,7 @@ COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/birthdays /app
 USER 1001
 
 WORKDIR /app
-COPY ${ASSET_PATH} ./${ASSET_PATH}
+COPY assets ./assets
 COPY config.toml ./config.toml
 
 EXPOSE ${BACKEND_PORT}
