@@ -99,7 +99,7 @@ impl Config {
     }
 
     pub fn resolve_name<'a>(&'a self, name: &'a String) -> Option<(&'a str, &'a Birthday)> {
-        let n = name.as_str().split("-").nth(3)?;
+        let n = name.as_str().split("-").nth(2)?;
         if let Some(birthday) = self.birthdays.get(n) {
             Some((n, birthday))
         } else {
