@@ -37,15 +37,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn birthday_handler(
-    State(AppState { root, config }): State<AppState>,
+    State(AppState { mut root, config }): State<AppState>,
     path: Path<String>,
     mut req: Request,
 ) -> impl IntoResponse {
     match config.resolve_name(&path) {
         Some((name, birthday)) => {
-            let mut resource = if let Some(paths) = &config.path
-                && let Some(p) = paths.get(&String::from(name))
-            {
+            let mut resource = if let Some(p) = config.resolve_directory(name) {
                 p.to_path_buf()
             } else {
                 let mut p = root.clone();
@@ -60,7 +58,11 @@ async fn birthday_handler(
             };
             *req.uri_mut() = "/".parse().unwrap();
             ServeDir::new(resource).oneshot(req).await.unwrap()
-        } // this will return a 404 without uri parsing
-        None => ServeDir::new(root).oneshot(req).await.unwrap(),
+        } 
+        None => {
+            *req.uri_mut() = "/".parse().unwrap();
+            root.push("empty");
+            ServeDir::new(root).oneshot(req).await.unwrap()
+        }
     }
 }

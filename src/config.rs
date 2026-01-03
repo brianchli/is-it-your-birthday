@@ -3,7 +3,6 @@ use std::{collections::HashMap, path::PathBuf};
 use chrono::{Datelike, NaiveDate};
 use serde::Deserialize;
 use tokio::fs::read;
-use tower_http::services::ServeDir;
 
 #[derive(Deserialize)]
 #[serde(untagged)]
@@ -12,7 +11,7 @@ enum Nicknames {
     Many(Vec<String>),
 }
 
-#[derive(Clone, Default, Deserialize)]
+#[derive(Clone, Copy, Default, Deserialize)]
 pub(crate) struct Birthday {
     day: u8,
     month: u8,
@@ -22,6 +21,18 @@ impl Birthday {
     pub fn matches(&self, date: &NaiveDate) -> bool {
         date.day() == self.day as u32 && date.month() == self.month as u32
     }
+}
+
+fn birthday_parse<'de, D>(deserializer: D) -> Result<HashMap<String, Birthday>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let map = HashMap::<String, Birthday>::deserialize(deserializer)?;
+    Ok(HashMap::from_iter(map.iter().map(|(k, &v)| {
+        let mut s = k.clone();
+        s.push('s');
+        (s.to_lowercase(), v)
+    })))
 }
 
 fn invert_map<'de, D>(deserializer: D) -> Result<Option<HashMap<String, String>>, D::Error>
@@ -34,19 +45,26 @@ where
     };
 
     let mut inverted = HashMap::new();
-
     for (n, other_names) in raw {
+        let mut name = n.to_lowercase();
+        name.push('s');
         match other_names {
-            Nicknames::One(name) => {
-                if inverted.insert(name, n.clone()).is_some() {
+            Nicknames::One(mut nickname) => {
+                nickname = nickname.to_lowercase();
+                nickname.push('s');
+                if inverted.insert(nickname, name).is_some() {
                     return Err(serde::de::Error::custom(format!(
                         "duplicate entry found for: '{n}'"
                     )));
                 };
             }
-            Nicknames::Many(other_names) => {
+            Nicknames::Many(mut other_names) => {
+                other_names.iter_mut().for_each(|s| s.push('s'));
                 for nickname in other_names {
-                    if inverted.insert(nickname, n.clone()).is_some() {
+                    if inverted
+                        .insert(nickname.to_lowercase(), name.clone())
+                        .is_some()
+                    {
                         return Err(serde::de::Error::custom(format!(
                             "duplicate entry found for: '{n}'"
                         )));
@@ -59,7 +77,7 @@ where
     Ok(Some(inverted))
 }
 
-fn servedir<'de, D>(deserializer: D) -> Result<Option<HashMap<String, PathBuf>>, D::Error>
+fn dir_map<'de, D>(deserializer: D) -> Result<Option<HashMap<String, PathBuf>>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -72,8 +90,9 @@ where
     };
 
     let mut convert = HashMap::new();
-    for (person, path) in map {
-        convert.insert(person, PathBuf::from(path));
+    for (mut person, path) in map {
+        person.push('s');
+        convert.insert(person.to_lowercase(), PathBuf::from(path));
     }
 
     Ok(Some(convert))
@@ -81,14 +100,15 @@ where
 
 #[derive(Clone, Deserialize)]
 pub struct Config {
+    #[serde(deserialize_with = "birthday_parse")]
     birthdays: HashMap<String, Birthday>,
 
     #[serde(default, deserialize_with = "invert_map")]
     nicknames: Option<HashMap<String, String>>,
 
     // a directory containing the code bundle (html + css + js)
-    #[serde(default, deserialize_with = "servedir")]
-    pub path: Option<HashMap<String, PathBuf>>,
+    #[serde(default, deserialize_with = "dir_map")]
+    path: Option<HashMap<String, PathBuf>>,
 }
 
 impl Config {
@@ -98,13 +118,17 @@ impl Config {
         Ok(toml::from_slice(&buf)?)
     }
 
-    pub fn resolve_name<'a>(&'a self, name: &'a String) -> Option<(&'a str, &'a Birthday)> {
-        let n = name.as_str().split("-").nth(2)?;
+    pub fn resolve_name<'a>(&'a self, name: &'a str) -> Option<(&'a str, &'a Birthday)> {
+        let n = name.split("-").nth(2)?;
         if let Some(birthday) = self.birthdays.get(n) {
             Some((n, birthday))
         } else {
             let nicknames = self.nicknames.as_ref()?;
-            Some((n, self.birthdays.get(nicknames.get(name)?)?))
+            Some((nicknames.get(n)?, self.birthdays.get(nicknames.get(n)?)?))
         }
+    }
+
+    pub fn resolve_directory(&self, name: &str) -> Option<&PathBuf> {
+        self.path.as_ref()?.get(&String::from(name))
     }
 }
