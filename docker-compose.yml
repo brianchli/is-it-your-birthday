@@ -4,6 +4,7 @@ services:
     container_name: birthdays
     environment:
       BACKEND_PORT: ${BACKEND_PORT}
+      ASSET_PATH: ${ASSET_PATH}
       RUST_LOG: debug
     ports:
       - "127.0.0.1:${BACKEND_PORT}:${BACKEND_PORT}"
