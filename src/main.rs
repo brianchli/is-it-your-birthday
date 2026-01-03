@@ -48,7 +48,9 @@ async fn birthday_handler(
             {
                 p.to_path_buf()
             } else {
-                PathBuf::from("default")
+                let mut p = root.clone();
+                p.push("default");
+                p
             };
             let today = Utc::now().with_timezone(&Sydney).date_naive();
             if birthday.matches(&today) {
@@ -56,10 +58,9 @@ async fn birthday_handler(
             } else {
                 resource.push("no");
             };
-            *req.uri_mut() = resource.to_string_lossy().parse().unwrap();
-            ServeDir::new(root).oneshot(req).await.unwrap()
-        }
-        // this will return a 404 without uri parsing
+            *req.uri_mut() = "/".parse().unwrap();
+            ServeDir::new(resource).oneshot(req).await.unwrap()
+        } // this will return a 404 without uri parsing
         None => ServeDir::new(root).oneshot(req).await.unwrap(),
     }
 }
