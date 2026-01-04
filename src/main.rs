@@ -9,7 +9,7 @@ use chrono::Utc;
 use chrono_tz::Australia::Sydney;
 use std::{
     net::{IpAddr, SocketAddr},
-    path::PathBuf,
+    path::{self, PathBuf},
 };
 use tokio::net::TcpListener;
 use tower::ServiceExt;
@@ -44,22 +44,44 @@ async fn birthday_handler(
     match config.resolve_name(&path) {
         Some((name, birthday)) => {
             let mut resource = if let Some(p) = config.resolve_directory(name) {
-                p.to_path_buf()
+                path::Path::new("/").join(p.as_path())
             } else {
-                PathBuf::from("default")
+                path::Path::new("/").join("default")
             };
             let today = Utc::now().with_timezone(&Sydney).date_naive();
             if birthday.matches(&today) {
-                resource.push("yes");
+                resource.push("/yes/");
             } else {
-                resource.push("no");
+                resource.push("/no/");
             };
-            *req.uri_mut() = format!("/{}/", resource.to_string_lossy()).parse().unwrap();
-            ServeDir::new(root).oneshot(req).await.unwrap()
+            if let Some(r) = {
+                match resource.to_str() {
+                    Some(resource) => resource.parse().ok(),
+                    None => {
+                        eprintln!("failed to convert {resource:?} to a valid UTF-8 str slice");
+                        None
+                    }
+                }
+            } {
+                *req.uri_mut() = r;
+            };
+            match ServeDir::new(root).oneshot(req).await {
+                Ok(res) => res.into_response(),
+                Err(e) => {
+                    eprintln!("Infallible operation failed with: {e}");
+                    axum::http::StatusCode::NOT_FOUND.into_response()
+                }
+            }
         }
         None => {
             *req.uri_mut() = "/empty/".parse().unwrap();
-            ServeDir::new(root).oneshot(req).await.unwrap()
+            match ServeDir::new(root).oneshot(req).await {
+                Ok(res) => res.into_response(),
+                Err(e) => {
+                    eprintln!("Infallible operation failed with: {e}");
+                    axum::http::StatusCode::NOT_FOUND.into_response()
+                }
+            }
         }
     }
 }
