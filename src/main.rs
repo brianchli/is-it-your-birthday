@@ -37,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn birthday_handler(
-    State(AppState { mut root, config }): State<AppState>,
+    State(AppState { root, config }): State<AppState>,
     path: Path<String>,
     mut req: Request,
 ) -> impl IntoResponse {
@@ -46,9 +46,7 @@ async fn birthday_handler(
             let mut resource = if let Some(p) = config.resolve_directory(name) {
                 p.to_path_buf()
             } else {
-                let mut p = root.clone();
-                p.push("default");
-                p
+                PathBuf::from("default")
             };
             let today = Utc::now().with_timezone(&Sydney).date_naive();
             if birthday.matches(&today) {
@@ -56,12 +54,11 @@ async fn birthday_handler(
             } else {
                 resource.push("no");
             };
-            *req.uri_mut() = "/".parse().unwrap();
-            ServeDir::new(resource).oneshot(req).await.unwrap()
-        } 
+            *req.uri_mut() = format!("/{}/", resource.to_string_lossy()).parse().unwrap();
+            ServeDir::new(root).oneshot(req).await.unwrap()
+        }
         None => {
-            *req.uri_mut() = "/".parse().unwrap();
-            root.push("empty");
+            *req.uri_mut() = "/empty/".parse().unwrap();
             ServeDir::new(root).oneshot(req).await.unwrap()
         }
     }
