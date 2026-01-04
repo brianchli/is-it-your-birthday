@@ -33,6 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let router = axum::Router::new()
         .route("/{*name}", get(birthday_handler))
         .with_state(AppState { root, config });
+    println!("listening on http://{}", &addr);
     Ok(axum::serve(listener, router).await?)
 }
 
