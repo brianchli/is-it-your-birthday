@@ -50,9 +50,9 @@ async fn birthday_handler(
             };
             let today = Utc::now().with_timezone(&Sydney).date_naive();
             if birthday.matches(&today) {
-                resource.push("/yes/");
+                resource.push("yes/");
             } else {
-                resource.push("/no/");
+                resource.push("no/");
             };
             if let Some(r) = {
                 match resource.to_str() {
