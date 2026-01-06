@@ -1,11 +1,10 @@
 use std::{collections::HashMap, path::PathBuf};
 
+use super::Birthday;
 use serde::Deserialize;
 
-use crate::core::config::Birthday;
-
 #[derive(Deserialize, Debug, Clone)]
-pub enum Actions {
+pub(crate) enum Actions {
     #[serde(alias = "redirect")]
     #[serde(alias = "to")]
     Redirect(String),
@@ -27,15 +26,17 @@ enum Aliases {
     Multiple(Vec<Single>),
 }
 
-pub fn birthday_parse<'de, D>(deserializer: D) -> Result<HashMap<String, Birthday>, D::Error>
+pub fn birthday_parse<'de, D>(
+    deserializer: D,
+) -> Result<HashMap<String, (Actions, Birthday)>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
     let map = HashMap::<String, Birthday>::deserialize(deserializer)?;
     Ok(HashMap::from_iter(map.iter().map(|(k, &v)| {
-        let mut s = k.clone();
+        let mut s = k.to_lowercase();
         s.push('s');
-        (s.to_lowercase(), v)
+        (s.clone(), (Actions::Resolve(s), v))
     })))
 }
 

@@ -5,20 +5,17 @@ use axum::{
     response::IntoResponse,
     routing::get,
 };
+
 use std::{
     net::{IpAddr, SocketAddr},
     path::{self, PathBuf},
 };
+
 use tokio::net::TcpListener;
 use tower::ServiceExt;
 use tower_http::services::ServeDir;
 
-use crate::core::{
-    AppState,
-    config::{Actions, Config},
-    handler::Handler,
-    redirect_to, serve_directory,
-};
+use crate::core::{Actions, AppState, Config, Handler, redirect_to, serve_directory};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -48,7 +45,7 @@ async fn birthday_handler(
             let resource = path::Path::new("/").join("default");
             serve_directory(req, root, resource, birthday).await
         }
-        Some((Actions::Redirect(to), ..)) => redirect_to(&to),
+        Some((Actions::Redirect(to), ..)) => redirect_to(to),
         _ => {
             *req.uri_mut() = "/empty/".parse().unwrap();
             match ServeDir::new(root).oneshot(req).await {

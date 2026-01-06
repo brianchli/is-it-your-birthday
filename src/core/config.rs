@@ -1,19 +1,12 @@
-mod birthday_repr;
-mod deserialise;
-
-pub use birthday_repr::Birthday;
-pub use deserialise::Actions;
-
+use crate::core::parse::{Actions, Birthday, birthday_parse, dir_map, invert_map};
 use serde::Deserialize;
 use std::{collections::HashMap, path::PathBuf};
 use tokio::fs::read;
 
-use deserialise::{birthday_parse, dir_map, invert_map};
-
 #[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     #[serde(deserialize_with = "birthday_parse")]
-    pub(crate) birthdays: HashMap<String, Birthday>,
+    pub(crate) birthdays: HashMap<String, (Actions, Birthday)>,
 
     #[serde(default, deserialize_with = "invert_map")]
     pub(crate) aliases: Option<HashMap<String, Actions>>,
