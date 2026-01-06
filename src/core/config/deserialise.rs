@@ -1,4 +1,4 @@
-use std::{collections::HashMap, mem::swap, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf};
 
 use serde::Deserialize;
 
