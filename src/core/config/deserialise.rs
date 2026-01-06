@@ -49,7 +49,7 @@ where
     };
 
     let mut inverted = HashMap::new();
-    let mut handle_inversion = |mut name: String, single: Single| -> Result<(), D::Error> {
+    let mut handle_inversion = |name: String, single: Single| -> Result<(), D::Error> {
         match single {
             Single::Text(mut target) => {
                 target.push('s');
@@ -68,7 +68,7 @@ where
                         "no resolves can be created as an object within the configuration"
                     ),
                 };
-                swap(&mut redirect, &mut name);
+                redirect.push('s');
                 if let Some(duplicate) = inverted.insert(redirect, Actions::Redirect(name)) {
                     return Err(serde::de::Error::custom(format!(
                         "Duplicate found {:?}",
@@ -79,7 +79,6 @@ where
             }
         }
     };
-
     for (mut original, mappings) in map {
         original.push('s');
         match mappings {
