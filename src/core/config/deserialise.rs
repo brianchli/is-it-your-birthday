@@ -52,7 +52,6 @@ where
         match single {
             Single::Text(mut target) => {
                 target.push('s');
-                dbg!(&target, &name);
                 if let Some(duplicate) = inverted.insert(target, Actions::Resolve(name)) {
                     return Err(serde::de::Error::custom(format!(
                         "Duplicate found {:?}",
@@ -82,7 +81,6 @@ where
 
     for (mut original, mappings) in map {
         original.push('s');
-        dbg!(&mappings);
         match mappings {
             Aliases::Single(single) => handle_inversion(original, single)?,
             Aliases::Multiple(singles) => {
@@ -92,7 +90,6 @@ where
             }
         }
     }
-    dbg!(&inverted);
 
     Ok(Some(inverted))
 }
