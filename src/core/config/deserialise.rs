@@ -81,6 +81,7 @@ where
     };
     for (mut original, mappings) in map {
         original.push('s');
+        original.chars().for_each(|mut c| c.make_ascii_lowercase());
         match mappings {
             Aliases::Single(single) => handle_inversion(original, single)?,
             Aliases::Multiple(singles) => {
