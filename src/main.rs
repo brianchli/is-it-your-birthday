@@ -1,12 +1,10 @@
-mod config;
+mod core;
 
 use axum::{
     extract::{Path, Request, State},
     response::IntoResponse,
     routing::get,
 };
-use chrono::Utc;
-use chrono_tz::Australia::Sydney;
 use std::{
     net::{IpAddr, SocketAddr},
     path::{self, PathBuf},
@@ -15,13 +13,12 @@ use tokio::net::TcpListener;
 use tower::ServiceExt;
 use tower_http::services::ServeDir;
 
-use crate::config::Config;
-
-#[derive(Clone)]
-struct AppState {
-    root: PathBuf,
-    config: Config,
-}
+use crate::core::{
+    AppState,
+    config::{Actions, Config},
+    handler::Handler,
+    redirect_to, serve_directory,
+};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -42,39 +39,17 @@ async fn birthday_handler(
     path: Path<String>,
     mut req: Request,
 ) -> impl IntoResponse {
-    match config.resolve_name(&path) {
-        Some((name, birthday)) => {
-            let mut resource = if let Some(p) = config.resolve_directory(name) {
-                path::Path::new("/").join(p.as_path())
-            } else {
-                path::Path::new("/").join("default")
-            };
-            let today = Utc::now().with_timezone(&Sydney).date_naive();
-            if birthday.matches(&today) {
-                resource.push("yes/");
-            } else {
-                resource.push("no/");
-            };
-            if let Some(r) = {
-                match resource.to_str() {
-                    Some(resource) => resource.parse().ok(),
-                    None => {
-                        eprintln!("failed to convert {resource:?} to a valid UTF-8 str slice");
-                        None
-                    }
-                }
-            } {
-                *req.uri_mut() = r;
-            };
-            match ServeDir::new(root).oneshot(req).await {
-                Ok(res) => res.into_response(),
-                Err(e) => {
-                    eprintln!("Infallible operation failed with: {e}");
-                    axum::http::StatusCode::NOT_FOUND.into_response()
-                }
-            }
+    match Handler::execute(&config, &path) {
+        Some((Actions::Resolve(..), Some(p), Some(birthday))) => {
+            let resource = path::Path::new("/").join(p.as_path());
+            serve_directory(req, root, resource, birthday).await
         }
-        None => {
+        Some((Actions::Resolve(..), None, Some(birthday))) => {
+            let resource = path::Path::new("/").join("default");
+            serve_directory(req, root, resource, birthday).await
+        }
+        Some((Actions::Redirect(to), ..)) => redirect_to(&to),
+        _ => {
             *req.uri_mut() = "/empty/".parse().unwrap();
             match ServeDir::new(root).oneshot(req).await {
                 Ok(res) => res.into_response(),
