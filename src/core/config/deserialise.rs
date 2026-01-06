@@ -7,7 +7,8 @@ use crate::core::config::Birthday;
 #[derive(Deserialize, Debug, Clone)]
 pub enum Actions {
     #[serde(alias = "redirect")]
-    Redirect { to: String },
+    #[serde(alias = "to")]
+    Redirect(String),
     #[serde(untagged)]
     Resolve(String),
 }
@@ -62,13 +63,13 @@ where
             }
             Single::Table(redirect) => {
                 let mut redirect = match redirect {
-                    Actions::Redirect { to: name } => name,
+                    Actions::Redirect(name) => name,
                     Actions::Resolve(_) => unreachable!(
                         "no resolves can be created as an object within the configuration"
                     ),
                 };
                 swap(&mut redirect, &mut name);
-                if let Some(duplicate) = inverted.insert(redirect, Actions::Redirect { to: name }) {
+                if let Some(duplicate) = inverted.insert(redirect, Actions::Redirect(name)) {
                     return Err(serde::de::Error::custom(format!(
                         "Duplicate found {:?}",
                         duplicate

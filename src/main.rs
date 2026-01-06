@@ -48,7 +48,7 @@ async fn birthday_handler(
             let resource = path::Path::new("/").join("default");
             serve_directory(req, root, resource, birthday).await
         }
-        Some((Actions::Redirect { to }, ..)) => redirect_to(&to),
+        Some((Actions::Redirect(to), ..)) => redirect_to(&to),
         _ => {
             *req.uri_mut() = "/empty/".parse().unwrap();
             match ServeDir::new(root).oneshot(req).await {
